@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>JSON viewer</title>
+    <link rel="shortcut icon"
+        href="data:image/x-icon;base64,AAABAAEAEBAAAAAAAABoBQAAFgAAACgAAAAQAAAAIAAAAAEACAAAAAAAAAEAAAAAAAAAAAAAAAEAAAAAAAC/v78AWFhYAElJSQA6OjoAKysrABwcHAC9vb0AVlZWACkpKQCBgYEAGhoaAAsLCwCsrKwARUVFADY2NgD19fUAJycnAH9/fwAYGBgAcHBwAAkJCQBhYWEAubm5AFJSUgDz8/MANDQ0ACUlJQB9fX0AFhYWAG5ubgAHBwcAX19fALe3twBQUFAAQUFBACMjIwAUFBQAXV1dAE5OTgCmpqYAPz8/AP7+/gAwMDAAISEhABISEgBqamoAW1tbAExMTAA9PT0ALi4uAB8fHwDe3t4Ad3d">
+    <style type="text/css">
+        :root {
+            --margin: 10px;
+            --json-level-padding: 20px;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        .root {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: var(--margin);
+        }
+
+        .functional-buttons {
+            margin-top: var(--margin);
+            display: flex;
+            align-items: center;
+        }
+
+        .functional-buttons_button {
+            width: 100px;
+        }
+
+        .functional-buttons_button,
+        .functional-buttons_fieldset,
+        .functional-buttons_radio,
+        .functional-buttons_check,
+        .functional-buttons_label {
+            margin-right: var(--margin);
+        }
+
+        .json-view {
+            flex-grow: 1;
+            margin-top: var(--margin);
+        }
+
+        #status {
+            margin-top: var(--margin);
+            font-weight: 700;
+        }
+
+        .status-error {
+            color: red;
+        }
+
+        .status-valid {
+            color: green;
+        }
+
+        #result .row {
+            display: flex;
+            flex-basis: 100%;
+            flex-wrap: wrap;
+        }
+
+        #result .row .tab {
+            margin-right: var(--json-level-padding);
+        }
+
+        #result .break {
+            flex-basis: 100%;
+            height: 0;
+        }
+
+        #result .break~.break {
+            width: 100%;
+        }
+
+        #result .title {
+            font-weight: 700;
+            color: #000155;
+        }
+
+        ul.json-dict,
+        ol.json-array {
+            list-style-type: none;
+            margin: 0 0 0 1px;
+            border-left: 1px dotted #ccc;
+            padding-left: 2em;
+        }
+
+        .json-key {
+            color: #000155;
+            font-weight: bold;
+        }
+
+        .json-string {
+            color: #0B7500;
+        }
+
+        .json-literal {
+            color: #1A01CC;
+            font-weight: bold;
+        }
+
+        /* Toggle button */
+        a.json-toggle {
+            position: relative;
+            color: inherit;
+            text-decoration: none;
+        }
+
+        a.json-toggle:focus {
+            outline: none;
+        }
+
+        a.json-toggle:before {
+            line-height: 20px;
+            color: #c0c0c0;
+            position: absolute;
+            display: inline-block;
+            text-align: center;
+            left: -14px;
+        }
+
+        .json-view--icon-arrow a.json-toggle:before {
+            font-size: 12px;
+            content: "\25BC";
+        }
+
+        .json-view--icon-plus-minus a.json-toggle:before {
+            font-size: 16px;
+            content: "-";
+        }
+
+        a.json-toggle:hover:before {
+            color: #aaa;
+        }
+
+        .json-view--icon-arrow a.json-toggle.collapsed:before {
+            /* Use rotated down arrow, prevents right arrow appearing smaller than down arrow in some browsers */
+            transform: rotate(-90deg);
+        }
+
+        .json-view--icon-plus-minus a.json-toggle.collapsed:before {
+            content: "+";
+            line-height: 22px;
+        }
+
+        /* Collapsable placeholder links */
+        a.json-placeholder {
+            color: #aaa;
+            padding: 0 1em;
+            text-decoration: none;
+        }
+
+        a.json-placeholder:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div class="root">
+        <textarea rows="2"></textarea>
+        <div class="functional-buttons">
+            <button id="paste" class="functional-buttons_button">Paste ctrl+V</button>
+            <button id="copy" class="functional-buttons_button">Copy ctrl+C</button>
+            <fieldset class="functional-buttons_fieldset">
+                <legend>Collapsable view type</legend>
+                <input id="plusRadio" type="radio" class="functional-buttons_radio" value="plus" name="iconType"
+                    checked>
+                <label for="plusRadio">Plus/Minus</label>
+                <input id="arrowRadio" type="radio" value="functional-buttons_radio" name="iconType">
+                <label for="arrowRadio">Arrows</label>
+            </fieldset>
+            <input id="collapsed" type="checkbox" class="functional-buttons_check" value="1" />
+            <label for="collapsed" class="functional-buttons_label">Collapsed</label>
+            <input id="propsWithQuotes" type="checkbox" class="functional-buttons_check" value="1" />
+            <label for="propsWithQuotes" class="functional-buttons_label">Props with "</label>
+            <input id="withLinks" type="checkbox" class="functional-buttons_check" value="1" checked />
+            <label for="withLinks" class="functional-buttons_label">Show url as link</label>
+        </div>
+        <div id="status"></div>
+        <fieldset class="json-view">
+            <legend>JSON result</legend>
+            <div id="result"></div>
+        </fieldset>
+    </div>
+    <script type="text/javascript">
+        var config = {
+            collapsed: false,
+            plusRadio: true,
+            arrowRadio: false,
+            propsWithQuotes: false,
+            withLinks: true,
+        };
+        var textAreaKeydownUpdateTimeout = null;
+        var textAreaKeydownUpdateTimeoutMs = 3000;
+
+        // Polyfill code for the old IE browser
+        if (typeof NodeList !== 'undefined' && NodeList.prototype && !NodeList.prototype.forEach) {
+            NodeList.prototype.forEach = Array.prototype.forEach;
+        }
+
+        // Polyfill code for the old IE browser
+        if (!('remove' in Element.prototype)) {
+            Element.prototype.remove = function () {
+                if (this.parentNode) {
+                    this.parentNode.removeChild(this);
+                }
+            };
+        }
+
+        function getJson() {
+            if (textAreaKeydownUpdateTimeout) {
+                clearTimeout(textAreaKeydownUpdateTimeout);
+            }
+            var json = document.querySelectorAll('textarea')[0].value;
+            if (json) {
+                var status = document.getElementById('status');
+                try {
+                    var obj = JSON.parse(json);
+                    status.className = 'status-valid';
+                    status.innerHTML = 'JSON parsed';
+                    var result = document.getElementById('result');
+                    result.innerHTML = json2html(obj, config);
+                    document.querySelectorAll('#result a.json-toggle').forEach(function (a) {
+                        addEvent('click', a, function () {
+                            this.classList.toggle('collapsed');
+                            toggleElementBySelector(this.parentNode, 'ul.json-dict');
+                            toggleElementBySelector(this.parentNode, 'ol.json-array');
+                            return false;
+                        });
+                    });
+                    if (config.collapsed) {
+                        document.querySelectorAll('#result a.json-toggle').forEach(function (a) {
+                            a.click();
+                        });
+                    }
+                } catch (err) {
+                    status.innerHTML = err;
+                    status.className = 'status-error';
+                }
+            }
+        }
+
+        function paste(clipboardData) {
+            var tb = document.querySelectorAll('textarea')[0];
+            if (tb !== document.activeElement) {
+                tb.blur();
+                var text = clipboardData.getData('Text');
+                tb.value = text;
+                getJson();
+            }
+        }
+
+        function copy() {
+            var tb = document.querySelectorAll('textarea')[0];
+            if (tb !== document.activeElement) {
+                tb.focus();
+                tb.select();
+                document.execCommand('copy');
+            }
+        }
+
+        (function () {
+            addEvent('paste', document, function (e) {
+                var clipboardData = e.clipboardData || window.clipboardData;
+                paste(clipboardData);
+            });
+            addEvent('keydown', document, function (e) {
+                if (e.ctrlKey) {
+                    if (e.keyCode === 86) { // 86 = v
+                        var clipboardData = window.clipboardData;
+                        if (clipboardData) {
+                            paste(clipboardData);
+                        }
+                    } else if (e.keyCode === 67) { // 67 = c
+                        copy();
+                    }
+                }
+            });
+            addEvent('click', document.getElementById('copy'), copy);
+            document.querySelectorAll('input[type=radio]').forEach(function (rd) {
+                addEvent('change', rd, toggleIconChanged);
+            });
+            document.querySelectorAll('input[type=checkbox]').forEach(function (rd) {
+                addEvent('change', rd, saveConfigAndUpdateJson);
+            });
+            var tb = document.querySelectorAll('textarea')[0];
+            addEvent('change', tb, getJson);
+            addEvent('keydown', tb, textAreaKeyDown);
+            loadConfig();
+        })();
+
+        function toggleIconChanged() {
+            saveConfig();
+            var jsonView = document.querySelectorAll('.json-view')[0];
+            if (config.plusRadio) {
+                jsonView.classList.remove('json-view--icon-arrow');
+                jsonView.classList.add('json-view--icon-plus-minus');
+            } else {
+                jsonView.classList.add('json-view--icon-arrow');
+                jsonView.classList.remove('json-view--icon-plus-minus');
+            }
+        }
+
+        function saveConfigAndUpdateJson() {
+            saveConfig();
+            getJson();
+        }
+
+        function textAreaKeyDown(e) {
+            if (textAreaKeydownUpdateTimeout) {
+                clearTimeout(textAreaKeydownUpdateTimeout);
+            }
+            textAreaKeydownUpdateTimeout = setTimeout(getJson, textAreaKeydownUpdateTimeoutMs);
+        }
+
+        function loadConfig() {
+            var configStr = localStorage.getItem('config');
+            if (configStr) {
+                config = JSON.parse(configStr);
+                document.getElementById('plusRadio').checked = config.plusRadio;
+                document.getElementById('arrowRadio').checked = config.arrowRadio;
+                document.getElementById('collapsed').checked = config.collapsed;
+                document.getElementById('propsWithQuotes').checked = config.propsWithQuotes;
+                document.getElementById('withLinks').checked = config.withLinks;
+            }
+            toggleIconChanged();
+        }
+
+        function saveConfig() {
+            config = {
+                plusRadio: document.getElementById('plusRadio').checked,
+                arrowRadio: document.getElementById('arrowRadio').checked,
+                collapsed: document.getElementById('collapsed').checked,
+                propsWithQuotes: document.getElementById('propsWithQuotes').checked,
+                withLinks: document.getElementById('withLinks').checked,
+            };
+            localStorage.setItem('config', JSON.stringify(config));
+        }
+
+        function isCollapsable(arg) {
+            return arg instanceof Object && Object.keys(arg).length > 0;
+        }
+
+        function isUrl(string) {
+            var urlRegexp = /^(https?:\/\/|ftps?:\/\/)?([a-z0-9%-]+\.){1,}([a-z0-9-]+)?(:(\d{1,5}))?(\/([a-z0-9\-._~:\/?#[\]@!$&'()*+,;=%]+)?)?$/i;
+            return urlRegexp.test(string);
+        }
+
+        function json2html(json, options) {
+            var html = '';
+            if (typeof json === 'string') {
+                // Escape tags and quotes
+                json = json
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/'/g, '&apos;')
+                    .replace(/"/g, '&quot;');
+
+                if (options.withLinks && isUrl(json)) {
+                    html += '"<a href="' + json + '" class="json-string" target="_blank">' + json + '</a>"';
+                } else {
+                    // Escape double quotes in the rendered non-URL string.
+                    json = json.replace(/&quot;/g, '\\&quot;');
+                    html += '<span class="json-string">"' + json + '"</span>';
+                }
+            } else if (typeof json === 'number') {
+                html += '<span class="json-literal">' + json + '</span>';
+            } else if (typeof json === 'boolean') {
+                html += '<span class="json-literal">' + json + '</span>';
+            } else if (json === null) {
+                html += '<span class="json-literal">null</span>';
+            } else if (json instanceof Array) {
+                if (json.length > 0) {
+                    html += '[<ol class="json-array">';
+                    for (var i = 0; i < json.length; ++i) {
+                        html += '<li>';
+                        // Add toggle button if item is collapsable
+                        if (isCollapsable(json[i])) {
+                            html += '<a class="json-toggle" href="javascript:void(0)"></a>';
+                        }
+                        html += json2html(json[i], options);
+                        // Add comma if item is not last
+                        if (i < json.length - 1) {
+                            html += ',';
+                        }
+                        html += '</li>';
+                    }
+                    html += '</ol>]';
+                } else {
+                    html += '[]';
+                }
+            } else if (typeof json === 'object') {
+                var keyCount = Object.keys(json).length;
+                if (keyCount > 0) {
+                    html += '{<ul class="json-dict">';
+                    for (var key in json) {
+                        if (Object.prototype.hasOwnProperty.call(json, key)) {
+                            html += '<li>';
+                            var keyRepr = '<span class="json-key">' +
+                                (options.propsWithQuotes ? '"' : '') +
+                                key +
+                                (options.propsWithQuotes ? '"' : '') +
+                                '</span>';
+                            // Add toggle button if item is collapsable
+                            if (isCollapsable(json[key])) {
+                                html += '<a class="json-toggle" href="javascript:void(0)">' + keyRepr + '</a>';
+                            } else {
+                                html += keyRepr;
+                            }
+                            html += ': ' + json2html(json[key], options);
+                            // Add comma if item is not last
+                            if (--keyCount > 0) {
+                                html += ',';
+                            }
+                            html += '</li>';
+                        }
+                    }
+                    html += '</ul>}';
+                } else {
+                    html += '{}';
+                }
+            }
+            return html;
+        }
+
+        function addEvent(evnt, elem, func) {
+            if (elem.addEventListener) {
+                elem.addEventListener(evnt, func, false);
+            } else {
+                var onEvent = 'on' + evnt;
+                if (elem.attachEvent) {
+                    elem.attachEvent(onEvent, func);
+                } else {
+                    elem[onEvent] = func;
+                }
+            }
+        }
+
+        function toggleElementBySelector(target, selector) {
+            target.querySelectorAll(selector).forEach(function (el) {
+                if (!el.style.display) {
+                    el.style.display = 'none';
+                    var count = el.querySelectorAll('li').length;
+                    var placeholder = count + (count > 1 ? ' items' : ' item');
+                    var newNode = document.createElement('a');
+                    newNode.href = 'javascript:void(0)';
+                    newNode.className = 'json-placeholder';
+                    newNode.innerHTML = placeholder;
+                    addEvent('click', newNode, function (p) {
+                        p.currentTarget.parentNode.firstChild.click();
+                    });
+                    el.parentNode.appendChild(newNode);
+                } else {
+                    el.style.display = '';
+                    el.parentNode.childNodes.forEach(function (el2) {
+                        if (el2.classList && el2.classList.contains('json-placeholder')) {
+                            el2.remove();
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
